@@ -1,8 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { Command } from "commander";
-import figlet from 'figlet'
-
+import { runwakeup } from "./tui/wakeup.ts";
 const program = new Command()
 
 program
@@ -11,7 +10,7 @@ program
     .version('0.0.1');
 
 program.command("wakeup").description("show bannner and pivk any one tool cli or telegram").action(async () => {
-    console.log("GanClaw waking up....")
+    await runwakeup()
 })
 
 await program.parseAsync(process.argv)
