@@ -21,7 +21,7 @@ function isProbabyTextfile(filePath: string): boolean {
   return TEXT_EXT.has(ext) || ext === '';
 }
 
-export class ToolExecuter {
+export class ToolExecutor {
 
   // overlay is for --> staging the changes done by the agent
   private overlay = new Map<string, string>();

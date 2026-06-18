@@ -1,1 +1,1 @@
-import { getAgentProvider } from "./ai.config.ts";
+import { getAgentModel } from "./ai.config.ts";

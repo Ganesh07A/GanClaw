@@ -1,5 +1,11 @@
 #!/usr/bin/env node --experimental-strip-types
 
+import dotenv from "dotenv";
+import { join } from "node:path";
+
+dotenv.config({ path: join(import.meta.dirname, ".env") });
+
+
 import { Command } from "commander";
 import { runwakeup } from "./tui/wakeup.ts";
 const program = new Command()
