@@ -80,9 +80,9 @@ function asMd(question: string, answer: string): string {
 export async function runAskMode() {
     console.log(chalk.bold("\n💡 Ask Mode\n"));
 
-    const question = await text({message: "What do you want to ask ?"});
-    if(isCancel(question) || !question.trim()) return;
-    
+    const question = await text({ message: "What do you want to ask ?" });
+    if (isCancel(question) || !question.trim()) return;
+
     const config = defaultAgentConfig()
     // only alllow file creation , for storing 
     config.tools.allowFileCreation = true;
@@ -93,45 +93,45 @@ export async function runAskMode() {
     // for logging 
     const traker = new ActionTracker();
     const executer = new ToolExecutor(config, traker);
-    
-   // TODO:  web serach tool : firecrawl --> 
 
-   const tools = {
-    ...createAskTools(executer)
-   }
+    // TODO:  web serach tool : firecrawl --> 
 
-   const agent = new ToolLoopAgent({
-    model: getAgentModel(),
-    stopWhen: stepCountIs(20),
-    tools
-   })
-
-   const result = await agent.generate({prompt:question.trim()})
-   const answer = result.text?.trim() || "(no answer)"
-   console.log(renderTerminalMarkdown(asMd(question,answer))) 
-
-   const wantsSave = await confirm({
-    message: "Do you want to save this conversation ?"
-   })
-   if(isCancel(wantsSave) || !wantsSave) return;
-   const filename = await text({
-    message:"filename",
-    initialValue: "ask.md",
-    validate: (v)=> {
-        const s = (v ? v : '').trim()
-        if (!s) return 'required'
-        if (s.includes('/')) return 'no slash allowed'
-        if (s.includes('\\')) return 'no backslash allowed'
-        if (!s.toLowerCase().endsWith('.md')) return 'must end with .md'
+    const tools = {
+        ...createAskTools(executer)
     }
 
-   })
+    const agent = new ToolLoopAgent({
+        model: getAgentModel(),
+        stopWhen: stepCountIs(20),
+        tools
+    })
 
-   if(isCancel(filename)) return;
+    const result = await agent.generate({ prompt: question.trim() })
+    const answer = result.text?.trim() || "(no answer)"
+    console.log(renderTerminalMarkdown(asMd(question, answer)))
 
-   executer.createFile(filename, asMd(question, answer));
-   const ok  = await runApprovalFlow(traker);
-   if(!ok) return executer.clearStaging()
+    const wantsSave = await confirm({
+        message: "Do you want to save this conversation ?"
+    })
+    if (isCancel(wantsSave) || !wantsSave) return;
+    const filename = await text({
+        message: "filename",
+        initialValue: "ask.md",
+        validate: (v) => {
+            const s = (v ? v : '').trim()
+            if (!s) return 'required'
+            if (s.includes('/')) return 'no slash allowed'
+            if (s.includes('\\')) return 'no backslash allowed'
+            if (!s.toLowerCase().endsWith('.md')) return 'must end with .md'
+        }
+
+    })
+
+    if (isCancel(filename)) return;
+
+    executer.createFile(filename, asMd(question, answer));
+    const ok = await runApprovalFlow(traker);
+    if (!ok) return executer.clearStaging()
 
     executer.applyApprovedFromTracker()
     console.log(chalk.green("saved to file : ", filename))
