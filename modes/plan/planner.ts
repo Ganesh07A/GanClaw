@@ -1,13 +1,14 @@
 import { Output, extractJsonMiddleware, generateText, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { z } from "zod";
-import { getAgentModel } from "../../ai/ai.config";
-import { ActionTracker } from "../agent/action.tracker";
-import { ToolExecutor } from "../agent/tool.executer";
-import { defaultAgentConfig } from "../agent/types";
+import { getAgentModel } from "../../ai/ai.config.ts";
+import { ActionTracker } from "../agent/action.tracker.ts";
+import { ToolExecutor } from "../agent/tool.executer.ts";
+import { defaultAgentConfig } from "../agent/types.ts";
 import chalk from "chalk";
 import type { Plan, PlanStep } from "./types.ts"
 import { createAgentTools } from "../agent/agent.tools.ts";
 import { platform } from "node:os";
+import { createWebTools } from "./web-tools.ts";
 
 
 const PlanSchema = z.object({
@@ -107,37 +108,40 @@ export async function generatePlan(goal: string) {
     const executer = new ToolExecutor(config, tracker);
 
 
-    const hasWeb = false
+    const hasWeb = !!process.env.FIRECRAWL_API_KEY;
     const model = wrapLanguageModel({
         model: getAgentModel(),
         middleware: extractJsonMiddleware()
     })
 
-    // TODO: wen crawling tools 
-    const tools = { ...readOnlyTools(executer) }
+
+    const tools = {
+        ...readOnlyTools(executer),
+        ...(hasWeb ? createWebTools(tracker) : {})
+    }
 
     console.log(chalk.cyan("Reseraching and drafting a plan...\n"))
 
     const result = await generateText({
         model,
         tools,
-        stopWhen:stepCountIs(20),
+        stopWhen: stepCountIs(20),
         system: PLAN_INTERUCTIONS(config.codebasePath, hasWeb),
         prompt: `User Goal: \n${goal}`,
         output: Output.object({ schema: PlanSchema })
     })
 
     const validated = PlanSchema.parse(result.output)
-    
-    const steps:PlanStep[] = validated.plan.steps.map((s , i)=>({
-    id:`step-${i+1}`,
-    title:s.title,
-    description:s.description,
-    hints:s.hints,
-    complexity:s.complexity
-  }));
 
-  return {goal , researchSummary:validated.plan.reserachSummary , steps}
+    const steps: PlanStep[] = validated.plan.steps.map((s, i) => ({
+        id: `step-${i + 1}`,
+        title: s.title,
+        description: s.description,
+        hints: s.hints,
+        complexity: s.complexity
+    }));
+
+    return { goal, researchSummary: validated.plan.reserachSummary, steps }
 }
 
 

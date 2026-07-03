@@ -1,5 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import chalk from "chalk";
-import { confirm, isCancel, text } from "@clack/prompts";
+import { confirm, isCancel, text, select } from "@clack/prompts";
 import { ToolLoopAgent, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { getAgentModel } from "../../ai/ai.config.ts";
@@ -8,6 +10,7 @@ import { ToolExecutor } from "../agent/tool.executer.ts";
 import { defaultAgentConfig } from "../agent/types.ts";
 import { renderTerminalMarkdown } from "../../tui/terminal-md.ts";
 import { runApprovalFlow } from "../agent/approval.ts";
+import { createWebTools } from "../plan/web-tools.ts";
 
 
 function createAskTools(executer: ToolExecutor) {
@@ -94,10 +97,11 @@ export async function runAskMode() {
     const traker = new ActionTracker();
     const executer = new ToolExecutor(config, traker);
 
-    // TODO:  web serach tool : firecrawl --> 
+    
 
     const tools = {
-        ...createAskTools(executer)
+        ...createAskTools(executer),
+        ...createWebTools(traker)
     }
 
     const agent = new ToolLoopAgent({
@@ -114,22 +118,53 @@ export async function runAskMode() {
         message: "Do you want to save this conversation ?"
     })
     if (isCancel(wantsSave) || !wantsSave) return;
-    const filename = await text({
-        message: "filename",
-        initialValue: "ask.md",
-        validate: (v) => {
-            const s = (v ? v : '').trim()
-            if (!s) return 'required'
-            if (s.includes('/')) return 'no slash allowed'
-            if (s.includes('\\')) return 'no backslash allowed'
-            if (!s.toLowerCase().endsWith('.md')) return 'must end with .md'
+
+    let filename = "";
+    let isModify = false;
+
+    while (true) {
+        const input = await text({
+            message: "filename",
+            initialValue: "ask.md",
+            validate: (v) => {
+                const s = (v ? v : '').trim()
+                if (!s) return 'required'
+                if (s.includes('/')) return 'no slash allowed'
+                if (s.includes('\\')) return 'no backslash allowed'
+                if (!s.toLowerCase().endsWith('.md')) return 'must end with .md'
+            }
+        });
+
+        if (isCancel(input)) return;
+        filename = input.trim();
+
+        const filepath = path.join(config.codebasePath, filename);
+        if (fs.existsSync(filepath)) {
+            const action = await select({
+                message: `File "${filename}" already exists. What would you like to do?`,
+                options: [
+                    { value: "rename", label: "Choose a different name" },
+                    { value: "overwrite", label: "Overwrite the existing file" },
+                    { value: "cancel", label: "Cancel saving" }
+                ]
+            });
+            if (isCancel(action) || action === "cancel") return;
+            if (action === "overwrite") {
+                isModify = true;
+                break;
+            }
+        } else {
+            isModify = false;
+            break;
         }
+    }
 
-    })
-
-    if (isCancel(filename)) return;
-
-    executer.createFile(filename, asMd(question, answer));
+    if (isModify) {
+        config.tools.allowFileModification = true;
+        executer.modifyFile(filename, asMd(question, answer));
+    } else {
+        executer.createFile(filename, asMd(question, answer));
+    }
     const ok = await runApprovalFlow(traker);
     if (!ok) return executer.clearStaging()
 

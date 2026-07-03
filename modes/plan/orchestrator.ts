@@ -1,17 +1,18 @@
 
 import chalk from "chalk";
 import { isCancel, confirm, text } from '@clack/prompts'
-import { getAgentModel } from "../../ai/ai.config";
+import { getAgentModel } from "../../ai/ai.config.ts";
 import { ToolLoopAgent, streamText, stepCountIs } from "ai";
-import { ToolExecutor } from "../agent/tool.executer";
-import { createAgentTools } from "../agent/agent.tools";
-import { defaultAgentConfig } from "../agent/types";
-import { runApprovalFlow } from "../agent/approval";
-import { renderTerminalMarkdown } from "../../tui/terminal-md";
-import { ActionTracker } from "../agent/action.tracker";
-import { generatePlan } from "./planner";
-import { printPlan, selectSteps } from "./selection";
-import type { PlanStep } from "./types"
+import { ToolExecutor } from "../agent/tool.executer.ts";
+import { createAgentTools } from "../agent/agent.tools.ts";
+import { defaultAgentConfig } from "../agent/types.ts";
+import { runApprovalFlow } from "../agent/approval.ts";
+import { renderTerminalMarkdown } from "../../tui/terminal-md.ts";
+import { ActionTracker } from "../agent/action.tracker.ts";
+import { generatePlan } from "./planner.ts";
+import { printPlan, selectSteps } from "./selection.ts";
+import type { PlanStep } from "./types.ts";
+import { createWebTools } from "./web-tools.ts";
 
 function stepPrompt(goal: string, step: PlanStep): string {
     return [`Goal: ${goal}`, `Step: ${step.title}`, step.description].join('\n');
@@ -44,8 +45,12 @@ export async function runPlanMode(): Promise<void> {
     const executer = new ToolExecutor(config, tracker);
 
 
-    // todo : need web tools bro
-    const tools = { ...createAgentTools(executer) }
+
+    const tools = {
+        ...createAgentTools(executer) ,
+        ...createWebTools(tracker),
+        
+    }
 
     for (const step of selected) {
         console.log(chalk.bold(`\n🔧 ${step.title}\n`));
