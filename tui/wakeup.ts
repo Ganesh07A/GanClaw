@@ -2,6 +2,7 @@ import { select , isCancel , spinner} from "@clack/prompts"
 import chalk from "chalk"
 import figlet from "figlet"
 import { runCli } from "../modes/cli.ts"
+import { runTelegramBot } from "../modes/telegram/index.ts"
 
 const BANNER_FONT='ANSI Shadow'
 const SHADOW= chalk.hex('#5b4d9e')
@@ -53,7 +54,7 @@ export async function runwakeup() {
         await runCli()
     }
     else if(mode === "telegram") {
-        console.log(chalk.dim("telegram mode started....."))
+        await runTelegramBot()
     }
     else if (mode === "exit") {
         console.log(chalk.dim("Good bye , from GanClaw CLI"))
