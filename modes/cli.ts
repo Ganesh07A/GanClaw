@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import {select, isCancel} from '@clack/prompts' 
 import { runAgentMode } from "./agent/orchestrator.ts";
+import { runAskMode } from "./ask/orchestrator.ts";
 
 export async function runCli() {
     // wanna reperative asking 
@@ -27,7 +28,7 @@ export async function runCli() {
                 await runAgentMode();
                 break
             case "ask":
-                console.log(chalk.green("Ask mode selected"))
+                await runAskMode();
                 break
             case "back":
                 console.log(chalk.green("Back to main menu"))
