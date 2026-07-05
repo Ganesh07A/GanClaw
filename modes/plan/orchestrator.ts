@@ -61,9 +61,20 @@ export async function runPlanMode(): Promise<void> {
             tools
         });
 
-        const r = await agent.generate({ prompt: stepPrompt(plan.goal, step) })
+        const result = await agent.stream({ prompt: stepPrompt(plan.goal, step) });
+        let responseText = "";
+        for await (const chunk of result.textStream) {
+            responseText += chunk;
+            process.stdout.write(chunk);
+        }
+        console.log("\n");
 
-        if (r.text) return console.log(renderTerminalMarkdown(r.text))
+        if (responseText.trim()) {
+            console.log(chalk.dim("========================================"));
+            console.log(renderTerminalMarkdown(responseText));
+            console.log(chalk.dim("========================================"));
+            return;
+        }
 
     }
 

@@ -55,13 +55,13 @@ async function promptApproval(
 ) {
   approvalSessions.set(chatId, session);
   await ctx.reply(approvalSummary(session.pending), {
-    ...Markup.inlineKeyboard([
+    reply_markup: Markup.inlineKeyboard([
       [Markup.button.callback('📋 Show Diff', 'approval_diff')],
       [
         Markup.button.callback('✅ Accept All', 'approval_accept'),
         Markup.button.callback('❌ Reject All', 'approval_reject'),
       ],
-    ]),
+    ]).reply_markup,
   });
 }
 

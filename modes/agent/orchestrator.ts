@@ -34,7 +34,7 @@ export async function runAgentMode() {
     tools,
   });
 
-  const result = await agent.generate({
+  const result = await agent.stream({
     prompt: goal.trim(),
     onStepFinish: ({ toolCalls }) => {
       for (const tc of toolCalls) {
@@ -48,7 +48,19 @@ export async function runAgentMode() {
     },
   });
 
-  if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
+  let responseText = "";
+  process.stdout.write(chalk.bold("\nResponse:\n"));
+  for await (const chunk of result.textStream) {
+    responseText += chunk;
+    process.stdout.write(chunk);
+  }
+  console.log("\n");
+
+  if (responseText.trim()) {
+    console.log(chalk.dim("========================================"));
+    console.log(renderTerminalMarkdown(responseText));
+    console.log(chalk.dim("========================================"));
+  }
 
   const ok = await runApprovalFlow(tracker);
   if (!ok) return executor.clearStaging();

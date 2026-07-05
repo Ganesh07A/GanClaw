@@ -8,7 +8,9 @@ import { defaultAgentConfig, type AgentConfig } from "../agent/types.ts";
 import { createWebTools } from "../plan/web-tools.ts";
 import type { Plan, PlanStep } from "../plan/types.ts";
 import { replyMd } from "./text.ts";
-import { finishOrApprove } from "./approval-session.ts"
+import { finishOrApprove } from "./approval-session.ts";
+import { generateTelegram } from "./stream-helper.ts";
+
 function readOnlyConfig(): AgentConfig {
   const c = defaultAgentConfig();
   c.tools.allowFileCreation = false;
@@ -65,8 +67,8 @@ function extraWebTools(tracker: ActionTracker) {
   return process.env.FIRECRAWL_API_KEY ? createWebTools(tracker) : {};
 }
 
-export async function runAsk(ctx:{reply:(t:string , o?:object)=>Promise<unknown>} , question:string){
-     const config = readOnlyConfig();
+export async function runAsk(ctx: any, question: string) {
+  const config = readOnlyConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(config, tracker);
   const tools = { ...createReadOnlyTools(executor), ...extraWebTools(tracker) };
@@ -75,12 +77,10 @@ export async function runAsk(ctx:{reply:(t:string , o?:object)=>Promise<unknown>
     tools,
   });
 
-  const {text} = await agent.generate({prompt:question});
-  await replyMd(ctx , text || ("no answer"))
+  await generateTelegram(ctx, agent, question, "🔍 Researching your question…");
 }
 
-
-export async function runAgent(ctx: { reply: (t: string, o?: object) => Promise<unknown> }, chatId: number, goal: string) {
+export async function runAgent(ctx: any, chatId: number, goal: string) {
   const config = defaultAgentConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(config, tracker);
@@ -89,13 +89,12 @@ export async function runAgent(ctx: { reply: (t: string, o?: object) => Promise<
     ...agentOptions(config, 40),
     tools,
   });
-  const { text } = await agent.generate({ prompt: goal });
-  if (text?.trim()) await replyMd(ctx, text.trim());
- await finishOrApprove(ctx, chatId, tracker, executor, '✅ Done. No file changes were needed.');
+  await generateTelegram(ctx, agent, goal, "🤖 Agent is processing task...");
+  await finishOrApprove(ctx, chatId, tracker, executor, '✅ Done. No file changes were needed.');
 }
 
 export async function runPlanSteps(
-  ctx: { reply: (t: string, o?: object) => Promise<unknown> },
+  ctx: any,
   chatId: number,
   plan: Plan,
   steps: PlanStep[],
@@ -112,9 +111,8 @@ export async function runPlanSteps(
       ...agentOptions(config, 30),
       tools,
     });
-    const { text } = await agent.generate({ prompt });
-    if (text?.trim()) await replyMd(ctx, text.trim());
+    await generateTelegram(ctx, agent, prompt, `✍️ Executing: ${step.title}...`);
   }
 
- await finishOrApprove(ctx, chatId, tracker, executor, '✅ All steps done. No file changes needed.');
+  await finishOrApprove(ctx, chatId, tracker, executor, '✅ All steps done. No file changes needed.');
 }

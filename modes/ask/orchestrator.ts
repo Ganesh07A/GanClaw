@@ -110,9 +110,19 @@ export async function runAskMode() {
         tools
     })
 
-    const result = await agent.generate({ prompt: question.trim() })
-    const answer = result.text?.trim() || "(no answer)"
-    console.log(renderTerminalMarkdown(asMd(question, answer)))
+    const result = await agent.stream({ prompt: question.trim() })
+    let answer = "";
+    process.stdout.write(chalk.bold("\nAnswer:\n"));
+    for await (const chunk of result.textStream) {
+        answer += chunk;
+        process.stdout.write(chunk);
+    }
+    console.log("\n");
+
+    // Print beautifully formatted markdown at the end
+    console.log(chalk.dim("========================================"));
+    console.log(renderTerminalMarkdown(asMd(question, answer)));
+    console.log(chalk.dim("========================================"));
 
     const wantsSave = await confirm({
         message: "Do you want to save this conversation ?"

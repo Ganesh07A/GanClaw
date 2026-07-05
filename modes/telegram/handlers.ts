@@ -55,7 +55,10 @@ export async function registerHandlers(bot: Telegraf) {
     void (async ()=>{
         const plan = await generatePlan(goal)
         const session:PlanSession = {plan , selected:new Set(plan.steps.map((s)=>s.id))}
-        await ctx.reply(planMessage(session) , {parse_mode:"Markdown", ...planKeyboard(session)});
+         await ctx.reply(planMessage(session) , {
+           parse_mode: "Markdown",
+           reply_markup: planKeyboard(session).reply_markup
+         });
          planSessions.set(ctx.chat.id, session);
     })().catch(console.error)
   });
