@@ -2,15 +2,12 @@ import { randomUUID } from "crypto";
 import type { ActionLog, ActionStatus } from "./types.ts";
 import { isMutationType } from "./types.ts";
 
-
-
 export class ActionTracker {
     private actions: ActionLog[] = [];
 
-    //we create some methods to perfome
-    log( entry: Omit<ActionLog, "id" | "timestamp"> & {
+    log(entry: Omit<ActionLog, "id" | "timestamp"> & {
         id?: string;
-        timestamp?: Date
+        timestamp?: Date;
     }): ActionLog {
         const log: ActionLog = {
             id: entry.id || randomUUID(),
@@ -30,13 +27,18 @@ export class ActionTracker {
         return this.actions;
     }
 
-    getPendingMutataions(): ActionLog[] {
+    getPendingMutations(): ActionLog[] {
         return this.actions.filter(
             (action) => action.status === "pending" && isMutationType(action.type)
         );
     }
 
-    updateStaus(id: string, status: ActionStatus, userApproved?: boolean): boolean {
+    // Alias for backward compatibility
+    getPendingMutataions(): ActionLog[] {
+        return this.getPendingMutations();
+    }
+
+    updateStatus(id: string, status: ActionStatus, userApproved?: boolean): boolean {
         const action = this.actions.find((a) => a.id === id);
         if (action) {
             action.status = status;
@@ -47,5 +49,10 @@ export class ActionTracker {
         }
 
         return false;
+    }
+
+    // Alias for backward compatibility
+    updateStaus(id: string, status: ActionStatus, userApproved?: boolean): boolean {
+        return this.updateStatus(id, status, userApproved);
     }
 }

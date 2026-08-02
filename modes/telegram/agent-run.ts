@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAgentModel } from "../../ai/ai.config.ts";
 import { ActionTracker } from "../agent/action.tracker.ts";
 import { ToolExecutor } from "../agent/tool.executer.ts";
-import { createAgentTools } from "../agent/agent.tools.ts";
+import { createAgentTools, createReadOnlyTools, createPersonalTools } from "../agent/agent.tools.ts";
 import { defaultAgentConfig, type AgentConfig } from "../agent/types.ts";
 import { createWebTools } from "../plan/web-tools.ts";
 import type { Plan, PlanStep } from "../plan/types.ts";
@@ -28,41 +28,6 @@ function agentOptions(config: AgentConfig, maxSteps: number) {
   };
 }
 
-function createReadOnlyTools(executor: ToolExecutor) {
-  return {
-    read_file: tool({
-      description: "Read a workspace file (relative path).",
-      inputSchema: z.object({ path: z.string() }),
-      execute: async ({ path: p }) => executor.readFile(p),
-    }),
-    list_files: tool({
-      description: "List files/dirs at a path.",
-      inputSchema: z.object({
-        path: z.string(),
-        recursive: z.boolean().optional().default(false),
-      }),
-      execute: async ({ path: p, recursive }) =>
-        executor.listFiles(p, recursive),
-    }),
-    search_files: tool({
-      description:
-        "Find files matching a glob pattern; optional content filter.",
-      inputSchema: z.object({
-        root: z.string(),
-        pattern: z.string(),
-        content_contains: z.string().optional(),
-      }),
-      execute: async ({ root, pattern, content_contains }) =>
-        executor.searchFiles(root, pattern, content_contains),
-    }),
-    analyze_codebase: tool({
-      description: "Summarize the codebase structure.",
-      inputSchema: z.object({ path: z.string().default(".") }),
-      execute: async ({ path: p }) => executor.analyzeCodebase(p),
-    }),
-  };
-}
-
 function extraWebTools(tracker: ActionTracker) {
   return process.env.FIRECRAWL_API_KEY ? createWebTools(tracker) : {};
 }
@@ -71,7 +36,11 @@ export async function runAsk(ctx: any, question: string) {
   const config = readOnlyConfig();
   const tracker = new ActionTracker();
   const executor = new ToolExecutor(config, tracker);
-  const tools = { ...createReadOnlyTools(executor), ...extraWebTools(tracker) };
+  const tools = {
+    ...createReadOnlyTools(executor),
+    ...createPersonalTools(executor),
+    ...extraWebTools(tracker),
+  };
   const agent = new ToolLoopAgent({
     ...agentOptions(config, 20),
     tools,

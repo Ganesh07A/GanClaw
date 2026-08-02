@@ -6,5 +6,5 @@ export const replyMd = (ctx: { reply: (t: string, o?: object) => Promise<unknown
 
 /** Text after `/name …` */
 export function commandArg(fullText: string, name: string): string {
-  return fullText.replace(new RegExp(`^/${name}\\s*`, 'i'), '').trim();
+  return fullText.replace(new RegExp(`^/${name}(?:@\\S+)?\\s*`, 'i'), '').trim();
 }

@@ -8,10 +8,19 @@ export async function runTelegramBot() {
     const token  = process.env.TELEGRAM_BOT_TOKEN;
     const ownerId = process.env.TELEGRAM_OWNER_ID;
 
-    const bot = new Telegraf(token!)
+    if (!token) {
+        console.error(chalk.red("Error: TELEGRAM_BOT_TOKEN is missing in .env"));
+        return;
+    }
+    if (!ownerId) {
+        console.error(chalk.red("Error: TELEGRAM_OWNER_ID is missing in .env"));
+        return;
+    }
+
+    const bot = new Telegraf(token);
     registerHandlers(bot);
 
-    await bot.telegram.sendMessage(ownerId!,WELCOME, {parse_mode:"Markdown"})
+    await bot.telegram.sendMessage(ownerId, WELCOME, { parse_mode: "Markdown" });
     console.log(chalk.green("We sent a welcome message on telegram! \n"))
 
     bot.launch();

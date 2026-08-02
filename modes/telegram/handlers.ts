@@ -24,8 +24,6 @@ export async function registerHandlers(bot: Telegraf) {
                 parse_mode: "Markdown",
             });
 
-        const loadingMsg = await ctx.reply("⏳ Processing Your Request…")
-        await ctx.reply("🔍 Researching your question…");
         void runAsk(ctx, q).catch(console.error);
     })
 
@@ -131,9 +129,13 @@ export async function registerHandlers(bot: Telegraf) {
     const { errors } = s.executor.applyApprovedFromTracker();
     s.executor.clearStaging();
 
-    await ctx.editMessageText('✅ All changes applied.');
-    await ctx.answerCbQuery('Applied!');
-    if (errors.length) console.error(errors);
+    if (errors.length) {
+      await ctx.editMessageText(`⚠️ Applied with errors:\n\n${errors.join('\n')}`);
+      await ctx.answerCbQuery('Done (with errors)');
+    } else {
+      await ctx.editMessageText('✅ All changes applied.');
+      await ctx.answerCbQuery('Applied!');
+    }
   });
 
   bot.action('approval_reject', async (ctx) => {
