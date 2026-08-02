@@ -58,6 +58,14 @@ export class ToolExecutor {
   }
 
 
+  private matchesWildcard(base: string, pat: string): boolean {
+    const regex = new RegExp(
+      "^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$",
+      "i"
+    );
+    return regex.test(base);
+  }
+
   // excluded --> descides which file to ignore or not to consider for modifications
   private excluded(relPath: string): boolean {
     const norm = this.norm(relPath);
@@ -65,9 +73,10 @@ export class ToolExecutor {
     const base = segments[segments.length - 1] ?? "";
 
     for (const pat of this.config.excludePatterns) {
-      if (pat === "*.log" && base.endsWith(".log")) return true;
-      if (pat === ".env*" && base.startsWith(".env")) return true;
-      if (pat.includes("*")) continue;
+      if (pat.includes("*")) {
+        if (this.matchesWildcard(base, pat)) return true;
+        continue;
+      }
       if (segments.includes(pat) || norm === pat || norm.startsWith(`${pat}/`))
         return true;
     }
@@ -85,21 +94,28 @@ export class ToolExecutor {
 
   // getting the text of the file --> either from overlay or from the disk
   getEffectiveText(rel: string): string | undefined {
-    const key = this.norm(rel);
-    if (this.deleted.has(key)) return undefined;
-    if (this.overlay.has(key)) return this.overlay.get(key);
-    const abs = this.resolveSafe(rel);
-    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return undefined;
-    return fs.readFileSync(abs, "utf8");
+    try {
+      const key = this.norm(rel);
+      if (this.deleted.has(key)) return undefined;
+      if (this.overlay.has(key)) return this.overlay.get(key);
+      const abs = this.resolveSafe(rel);
+      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return undefined;
+      return fs.readFileSync(abs, "utf8");
+    } catch {
+      return undefined;
+    }
   }
 
   readFile(rel: string): string {
     this.assertNotExcluded(rel, "read_file");
     const abs = this.resolveSafe(rel);
-    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+    let st: fs.Stats;
+    try {
+      st = fs.statSync(abs);
+    } catch {
       throw new Error(`File not found: ${rel}`);
     }
-    const st = fs.statSync(abs);
+    if (!st.isFile()) throw new Error(`Not a file: ${rel}`);
     if (st.size > this.config.maxFileSizeToRead) {
       throw new Error(`File too large: ${rel}`);
     }
@@ -439,5 +455,125 @@ export class ToolExecutor {
   clearStaging(): void {
     this.overlay.clear()
     this.deleted.clear()
+  }
+
+  getCurrentTime(): string {
+    const now = new Date();
+    return JSON.stringify({
+      iso: now.toISOString(),
+      local: now.toLocaleString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timestamp: now.getTime(),
+    }, null, 2);
+  }
+
+  async sendEmail(to: string, subject: string, body: string): Promise<string> {
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    const port = Number(process.env.SMTP_PORT || 465);
+
+    if (!user || !pass) {
+      throw new Error("EMAIL_USER or EMAIL_PASS environment variables are missing. Please set them in .env");
+    }
+
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    const info = await transporter.sendMail({
+      from: user,
+      to,
+      subject,
+      text: body,
+    });
+
+    this.tracker.log({
+      type: "code_analysis",
+      path: `send_email:${to}`,
+      details: { after: `Sent email to ${to} with messageId: ${info.messageId}`, toolName: "send_email" },
+      status: "executed",
+    });
+
+    return `Email successfully sent to ${to}. Message ID: ${info.messageId}`;
+  }
+
+  async checkEmails(limit: number = 5): Promise<string> {
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    const host = process.env.IMAP_HOST || "imap.gmail.com";
+    const port = Number(process.env.IMAP_PORT || 993);
+
+    if (!user || !pass) {
+      throw new Error("EMAIL_USER or EMAIL_PASS environment variables are missing. Please set them in .env");
+    }
+
+    const { ImapFlow } = await import("imapflow");
+    const client = new ImapFlow({
+      host,
+      port,
+      secure: port === 993,
+      auth: { user, pass },
+      logger: false,
+    });
+
+    await client.connect();
+    const emails: Array<{ seq: number; subject?: string; from?: string; date?: string }> = [];
+
+    try {
+      const lock = await client.getMailboxLock("INBOX");
+      try {
+        const mailbox = client.mailbox;
+        if (mailbox && mailbox.exists > 0) {
+          const fetchRange = `${Math.max(1, mailbox.exists - limit + 1)}:*`;
+          for await (const message of client.fetch(fetchRange, { envelope: true })) {
+            if (!message.envelope) continue;
+            emails.push({
+              seq: message.seq,
+              subject: message.envelope.subject,
+              from: message.envelope.from?.[0]?.address || message.envelope.from?.[0]?.name,
+              date: message.envelope.date?.toISOString(),
+            });
+          }
+        }
+      } finally {
+        lock.release();
+      }
+    } finally {
+      await client.logout();
+    }
+
+    const output = emails.reverse().map((e, i) => `${i + 1}. [${e.date || "Unknown Date"}] From: ${e.from || "Unknown"} | Subject: ${e.subject || "(No Subject)"}`).join("\n");
+    return output || "No emails found in INBOX.";
+  }
+
+  manageNotes(action: "read" | "write" | "append", content?: string, title?: string): string {
+    const notesDir = path.join(homedir(), ".ganclaw");
+    if (!fs.existsSync(notesDir)) fs.mkdirSync(notesDir, { recursive: true });
+    const notesFile = path.join(notesDir, "notes.md");
+    if (action === "read") {
+      if (!fs.existsSync(notesFile)) return "(Notes file notes.md is empty/does not exist yet)";
+      return fs.readFileSync(notesFile, "utf8");
+    }
+
+    if (action === "write") {
+      if (!content) throw new Error("Content is required for write action");
+      const formatted = title ? `# ${title}\n\n${content}\n` : `${content}\n`;
+      fs.writeFileSync(notesFile, formatted, "utf8");
+      return `Successfully wrote to notes.md`;
+    }
+
+    if (action === "append") {
+      if (!content) throw new Error("Content is required for append action");
+      const formatted = title ? `\n\n## ${title}\n${content}` : `\n${content}`;
+      fs.appendFileSync(notesFile, formatted, "utf8");
+      return `Successfully appended to notes.md`;
+    }
+
+    throw new Error(`Unknown action: ${action}`);
   }
 }
