@@ -13,9 +13,9 @@ const COMPLEXITY_COLOR: Record<NonNullable<PlanStep['complexity']>, string> = {
 
 
 export function printPlan(plan: Plan): void {
-  if (plan.reserachSummary?.trim()) {
+  if (plan.researchSummary?.trim()) {
     console.log(chalk.bold('\n🔍 Research summary'));
-    console.log(renderTerminalMarkdown(plan.reserachSummary));
+    console.log(renderTerminalMarkdown(plan.researchSummary));
   }
   console.log(chalk.bold('\n📋 Generated Plan\n'));
   for (const [i, s] of plan.steps.entries()) {

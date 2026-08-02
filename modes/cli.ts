@@ -23,17 +23,16 @@ export async function runCli() {
 
         switch (mode) {
             case "plan":
-                console.log(chalk.green("Plan mode selected"))
-                break
+                await runPlanMode();
+                break;
             case "agent":
                 await runAgentMode();
-                break
+                break;
             case "ask":
                 await runAskMode();
-                break
+                break;
             case "back":
-                await runPlanMode()
-                return
+                return;
         } 
     }
 }

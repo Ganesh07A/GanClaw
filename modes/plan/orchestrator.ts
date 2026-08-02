@@ -47,9 +47,8 @@ export async function runPlanMode(): Promise<void> {
 
 
     const tools = {
-        ...createAgentTools(executer) ,
-        ...createWebTools(tracker),
-        
+        ...createAgentTools(executer),
+        ...(process.env.FIRECRAWL_API_KEY ? createWebTools(tracker) : {}),
     }
 
     for (const step of selected) {
@@ -73,9 +72,7 @@ export async function runPlanMode(): Promise<void> {
             console.log(chalk.dim("========================================"));
             console.log(renderTerminalMarkdown(responseText));
             console.log(chalk.dim("========================================"));
-            return;
         }
-
     }
 
     const ok = await runApprovalFlow(tracker);
