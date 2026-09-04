@@ -5,12 +5,7 @@ import { getAgentModel } from "../../ai/ai.config.ts";
 import { Session } from "../../core/session.ts";
 import { buildSystemPrompt } from "../../core/prompt-builder.ts";
 import { renderTerminalMarkdown } from "../../tui/terminal-md.ts";
-import {
-  createReadOnlyTools,
-  createPersonalTools,
-} from "../agent/agent.tools.ts";
-import { createWebTools } from "../plan/web-tools.ts";
-import { createMemoryTools } from "./memory-tools.ts";
+import { getTools } from "../../tools/index.ts";
 
 /**
  * Chat Mode — interactive conversational loop with GanClaw.
@@ -35,13 +30,18 @@ export async function runChatMode(): Promise<void> {
   console.log(chalk.dim(greeting));
   console.log(chalk.dim('(Type "exit" or "bye" to quit)\n'));
 
-  // Build tools — read-only + personal + web + memory (no file mutations in chat)
-  const tools = {
-    ...createReadOnlyTools(session.executor),
-    ...createPersonalTools(session.executor),
-    ...(process.env.FIRECRAWL_API_KEY ? createWebTools(session.tracker) : {}),
-    ...createMemoryTools(session.memory),
-  };
+  // Check for any pending reminders that fired
+  const due = session.reminders.checkDue();
+  if (due.length > 0) {
+    console.log(chalk.yellow.bold("🔔 Due Reminders:"));
+    for (const r of due) {
+      console.log(chalk.yellow(`  • [${r.id}] ${r.message}`));
+    }
+    console.log();
+  }
+
+  // Build tools via central registry
+  const tools = getTools(session, "chat");
 
   // Conversation messages for multi-turn context
   const messages: Array<{ role: "user" | "assistant"; content: string }> = [];

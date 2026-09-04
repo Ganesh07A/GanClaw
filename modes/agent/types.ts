@@ -67,3 +67,22 @@ export function isMutationType(t: ActionType): boolean {
     t === 'tool_execute'
   );
 }
+
+
+export interface Reminder {
+  id: string;
+  message: string;
+  dueAt: string;
+  createdAt: string;
+  status: "pending" | "triggered" | "dismissed" | "completed" ;
+}
+
+export interface Task {
+  id:string;
+  title: string;
+  priority: "low" | "medium" | "high";
+  dueDate?: string;
+  completed: boolean;
+  createdAt: string;
+}
+

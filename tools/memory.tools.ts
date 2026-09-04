@@ -1,11 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { MemoryManager } from "../../core/memory.ts";
+import type { MemoryManager } from "../core/memory.ts";
 
-/**
- * Tools that let the AI manage its own memory.
- * These are what make GanClaw "learn" about the user over time.
- */
 export function createMemoryTools(memory: MemoryManager) {
   return {
     remember_fact: tool({
@@ -19,9 +15,7 @@ export function createMemoryTools(memory: MemoryManager) {
           ),
         source: z
           .enum(["user_said", "inferred"])
-          .describe(
-            "Whether the user explicitly said this or you inferred it",
-          ),
+          .describe("Whether the user explicitly said this or you inferred it"),
       }),
       execute: async ({ fact, source }) => memory.addFact(fact, source),
     }),
@@ -32,20 +26,18 @@ export function createMemoryTools(memory: MemoryManager) {
       inputSchema: z.object({
         query: z
           .string()
-          .describe(
-            "What to search for in memory (keywords or topic)",
-          ),
+          .describe("What to search for in memory (keywords or topic)"),
       }),
       execute: async ({ query }) => memory.searchMemory(query),
     }),
 
     list_known_facts: tool({
-      description:
-        "List everything you currently know/remember about the user.",
+      description: "List everything you currently know/remember about the user.",
       inputSchema: z.object({}),
       execute: async () => {
         const facts = memory.getFacts();
-        if (facts.length === 0) return "I don't have any stored facts about the user yet.";
+        if (facts.length === 0)
+          return "I don't have any stored facts about the user yet.";
         return facts
           .map(
             (f, i) =>
