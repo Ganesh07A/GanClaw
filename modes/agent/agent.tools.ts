@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { ToolExecutor } from "./tool.executer.ts";
+import type { ToolExecutor } from "./tool.executor.ts";
 
 export function createReadOnlyTools(executor: ToolExecutor) {
   return {

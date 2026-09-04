@@ -1,6 +1,6 @@
 import { Markup } from 'telegraf';
 import type { ActionTracker } from '../agent/action.tracker.ts';
-import type { ToolExecutor } from '../agent/tool.executer.ts';
+import type { ToolExecutor } from '../agent/tool.executor.ts';
 import type { ActionLog } from '../agent/types.ts';
 import { composeBeforeAfter, formatPatch } from '../agent/diff-view.ts';
 import { clip } from './text.ts';
@@ -72,7 +72,7 @@ export async function finishOrApprove(
   executor: ToolExecutor,
   noChangesMsg: string,
 ) {
-  const pending = tracker.getPendingMutataions();
+  const pending = tracker.getPendingMutations();
   if (pending.length === 0) {
     await ctx.reply(noChangesMsg);
     return;

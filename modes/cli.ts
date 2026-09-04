@@ -11,6 +11,7 @@ export async function runCli() {
         const mode = await select({
             message: " Choose CLi Sub mode  ",
             options: [
+                {value: "chat", label: "Chat (Personal Buddy)", hint: "Chat with GanClaw, memory & assistant"},
                 {value: "plan", label: "Plan", hint: "Plan any task"},
                 {value: "agent", label: "Agent", hint: "user can use it"},
                 {value: "ask", label: "Ask", hint: "user can ask any question"},
@@ -22,6 +23,11 @@ export async function runCli() {
         }
 
         switch (mode) {
+            case "chat": {
+                const { runChatMode } = await import("./chat/index.ts");
+                await runChatMode();
+                break;
+            }
             case "plan":
                 await runPlanMode();
                 break;

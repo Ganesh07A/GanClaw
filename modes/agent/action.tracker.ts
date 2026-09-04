@@ -33,10 +33,7 @@ export class ActionTracker {
         );
     }
 
-    // Alias for backward compatibility
-    getPendingMutataions(): ActionLog[] {
-        return this.getPendingMutations();
-    }
+
 
     updateStatus(id: string, status: ActionStatus, userApproved?: boolean): boolean {
         const action = this.actions.find((a) => a.id === id);
@@ -49,10 +46,5 @@ export class ActionTracker {
         }
 
         return false;
-    }
-
-    // Alias for backward compatibility
-    updateStaus(id: string, status: ActionStatus, userApproved?: boolean): boolean {
-        return this.updateStatus(id, status, userApproved);
     }
 }

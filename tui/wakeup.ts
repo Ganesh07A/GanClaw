@@ -38,11 +38,12 @@ export async function runwakeup() {
     }
     printBannerWithShadow(ascii)
 
-    // creating two modes 
+    // creating modes 
     const mode = await select({
         message: " Which mode you want to select ? ",
         options:[
-            {value: "cli", label: "CLI", hint: "use terminal"},
+            {value: "chat", label: "Chat (Personal Buddy)", hint: "conversational assistant & memory"},
+            {value: "cli", label: "Developer CLI", hint: "agent, plan, ask modes"},
             {value: "telegram", label: "Telegram", hint: "use telegram bot"},
             {value: "exit", label: "Exit", hint: "for quit application" }
         ]
@@ -50,7 +51,11 @@ export async function runwakeup() {
 
     if (isCancel(mode)) process.exit(0);
 
-    if (mode === "cli") {
+    if (mode === "chat") {
+        const { runChatMode } = await import("../modes/chat/index.ts");
+        await runChatMode();
+    }
+    else if (mode === "cli") {
         await runCli()
     }
     else if(mode === "telegram") {

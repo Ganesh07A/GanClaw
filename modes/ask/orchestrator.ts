@@ -6,7 +6,7 @@ import { ToolLoopAgent, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { getAgentModel } from "../../ai/ai.config.ts";
 import { ActionTracker } from "../agent/action.tracker.ts";
-import { ToolExecutor } from "../agent/tool.executer.ts";
+import { ToolExecutor } from "../agent/tool.executor.ts";
 import { defaultAgentConfig } from "../agent/types.ts";
 import { renderTerminalMarkdown } from "../../tui/terminal-md.ts";
 import { runApprovalFlow } from "../agent/approval.ts";
@@ -34,17 +34,24 @@ export async function runAskMode() {
 
     // for logging 
     const tracker = new ActionTracker();
-    const executer = new ToolExecutor(config, tracker);
+    const executor = new ToolExecutor(config, tracker);
 
     const tools = {
-        ...createReadOnlyTools(executer),
-        ...createPersonalTools(executer),
+        ...createReadOnlyTools(executor),
+        ...createPersonalTools(executor),
         ...(process.env.FIRECRAWL_API_KEY ? createWebTools(tracker) : {})
     }
 
     const agent = new ToolLoopAgent({
         model: getAgentModel(),
         stopWhen: stepCountIs(20),
+        instructions: [
+            'You are GanClaw, an AI assistant for developers.',
+            `Workspace root: ${config.codebasePath}`,
+            'Answer questions using the available read-only and personal tools.',
+            'Be concise but thorough. Cite file paths when referencing code.',
+            'Use web tools for questions about external libraries or APIs.',
+        ].join('\n'),
         tools
     })
 
@@ -109,13 +116,13 @@ export async function runAskMode() {
 
     if (isModify) {
         config.tools.allowFileModification = true;
-        executer.modifyFile(filename, asMd(question, answer));
+        executor.modifyFile(filename, asMd(question, answer));
     } else {
-        executer.createFile(filename, asMd(question, answer));
+        executor.createFile(filename, asMd(question, answer));
     }
     const ok = await runApprovalFlow(tracker);
-    if (!ok) return executer.clearStaging()
+    if (!ok) return executor.clearStaging()
 
-    executer.applyApprovedFromTracker()
+    executor.applyApprovedFromTracker()
     console.log(chalk.green("saved to file : ", filename))
 }

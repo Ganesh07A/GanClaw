@@ -2,7 +2,7 @@ import { tool, ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod";
 import { getAgentModel } from "../../ai/ai.config.ts";
 import { ActionTracker } from "../agent/action.tracker.ts";
-import { ToolExecutor } from "../agent/tool.executer.ts";
+import { ToolExecutor } from "../agent/tool.executor.ts";
 import { createAgentTools, createReadOnlyTools, createPersonalTools } from "../agent/agent.tools.ts";
 import { defaultAgentConfig, type AgentConfig } from "../agent/types.ts";
 import { createWebTools } from "../plan/web-tools.ts";
@@ -24,7 +24,13 @@ function agentOptions(config: AgentConfig, maxSteps: number) {
   return {
     model: getAgentModel(),
     stopWhen: stepCountIs(maxSteps),
-    instructions: `Workspace root: ${config.codebasePath}`,
+    instructions: [
+      'You are GanClaw, an AI assistant for developers, responding via Telegram.',
+      `Workspace root: ${config.codebasePath}`,
+      'All file mutations are staged until the user approves them.',
+      'Keep responses concise — Telegram messages have a 4096 char limit.',
+      'Cite file paths when referencing code.',
+    ].join('\n'),
   };
 }
 

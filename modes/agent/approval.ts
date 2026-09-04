@@ -68,7 +68,7 @@ function groupPending(pending: ActionLog[]): ReviewGroup[] {
 export async function runApprovalFlow(
   tracker: ActionTracker,
 ): Promise<boolean> {
-  const pending = tracker.getPendingMutataions();
+  const pending = tracker.getPendingMutations();
 
   if (pending.length === 0) {
     console.log(
@@ -87,12 +87,12 @@ export async function runApprovalFlow(
   });
 
   if (isCancel(choice) || choice === "cancel") {
-    for (const a of pending) tracker.updateStaus(a.id, "rejected", false);
+    for (const a of pending) tracker.updateStatus(a.id, "rejected", false);
     return false;
   }
 
   if (choice === "all") {
-    for (const a of pending) tracker.updateStaus(a.id, "approved", true);
+    for (const a of pending) tracker.updateStatus(a.id, "approved", true);
     return true;
   }
 
@@ -108,7 +108,7 @@ export async function runApprovalFlow(
       });
 
       if (isCancel(opt)) {
-        for (const a of pending) tracker.updateStaus(a.id, "rejected", false);
+        for (const a of pending) tracker.updateStatus(a.id, "rejected", false);
         return false;
       }
 
@@ -125,7 +125,7 @@ export async function runApprovalFlow(
       }
 
       for (const id of g.actionIds) {
-        tracker.updateStaus(
+        tracker.updateStatus(
           id,
           opt === "accept" ? "approved" : "rejected",
           opt === "accept",

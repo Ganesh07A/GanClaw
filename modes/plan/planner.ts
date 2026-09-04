@@ -2,7 +2,7 @@ import { Output, extractJsonMiddleware, generateText, stepCountIs, wrapLanguageM
 import { z } from "zod";
 import { getAgentModel } from "../../ai/ai.config.ts";
 import { ActionTracker } from "../agent/action.tracker.ts";
-import { ToolExecutor } from "../agent/tool.executer.ts";
+import { ToolExecutor } from "../agent/tool.executor.ts";
 import { defaultAgentConfig } from "../agent/types.ts";
 import chalk from "chalk";
 import type { Plan, PlanStep } from "./types.ts";
@@ -38,7 +38,7 @@ const PLAN_INSTRUCTIONS = (codebase: string, hasWeb: boolean) =>
 export async function generatePlan(goal: string) {
     const config = defaultAgentConfig();
     const tracker = new ActionTracker();
-    const executer = new ToolExecutor(config, tracker);
+    const executor = new ToolExecutor(config, tracker);
 
     const hasWeb = !!process.env.FIRECRAWL_API_KEY;
     const model = wrapLanguageModel({
@@ -47,7 +47,7 @@ export async function generatePlan(goal: string) {
     });
 
     const tools = {
-        ...createReadOnlyTools(executer),
+        ...createReadOnlyTools(executor),
         ...(hasWeb ? createWebTools(tracker) : {})
     };
 

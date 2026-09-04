@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { isCancel, confirm, text } from '@clack/prompts'
 import { getAgentModel } from "../../ai/ai.config.ts";
 import { ToolLoopAgent, streamText, stepCountIs } from "ai";
-import { ToolExecutor } from "../agent/tool.executer.ts";
+import { ToolExecutor } from "../agent/tool.executor.ts";
 import { createAgentTools } from "../agent/agent.tools.ts";
 import { defaultAgentConfig } from "../agent/types.ts";
 import { runApprovalFlow } from "../agent/approval.ts";
@@ -34,20 +34,24 @@ export async function runPlanMode(): Promise<void> {
     if (selected.length == 0) return;
 
     const proceed = await confirm({
-        message: `Execute ${selected.length} steps(s)`,
+        message: `Execute ${selected.length} step(s)?`,
         initialValue: true,
-
     })
 
-    // after approve shift to agent mode 
+    if (isCancel(proceed) || !proceed) {
+        console.log(chalk.dim('Cancelled.'));
+        return;
+    }
+
+    // after approval, shift to agent mode
     const config = defaultAgentConfig()
     const tracker = new ActionTracker()
-    const executer = new ToolExecutor(config, tracker);
+    const executor = new ToolExecutor(config, tracker);
 
 
 
     const tools = {
-        ...createAgentTools(executer),
+        ...createAgentTools(executor),
         ...(process.env.FIRECRAWL_API_KEY ? createWebTools(tracker) : {}),
     }
 
@@ -76,14 +80,14 @@ export async function runPlanMode(): Promise<void> {
     }
 
     const ok = await runApprovalFlow(tracker);
-    if (!ok) return executer.clearStaging();
+    if (!ok) return executor.clearStaging();
 
-    const { errors } = executer.applyApprovedFromTracker();
+    const { errors } = executor.applyApprovedFromTracker();
     if (errors.length) {
         console.log(chalk.red('\nSome operations reported errors:\n'));
         for (const e of errors) console.log(chalk.red(`  • ${e}`));
     } else {
         console.log(chalk.green('\n✓ Applied.\n'));
     }
-    executer.clearStaging();
+    executor.clearStaging();
 }
